@@ -1,4 +1,4 @@
-package socket_interface
+package socketinterface
 
 import (
 	"log"
