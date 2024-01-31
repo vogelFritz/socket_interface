@@ -35,7 +35,7 @@ func (srv *Server) WaitForClients() {
 			log.Fatal("Error accepting client")
 		}
 		srv.sockets = append(srv.sockets, socket)
-		srv.handleConnection(socket)
+		go srv.handleConnection(socket)
 	}
 }
 
@@ -45,6 +45,7 @@ func (srv Server) handleConnection(socket net.Conn) {
 		mLen, err := socket.Read(buffer)
 		if err != nil {
 			log.Println("Error reading")
+			break
 		}
 		srv.parseMessage(buffer[:mLen], socket)
 	}
@@ -65,7 +66,7 @@ func (srv Server) AddEventListener(event string, handler func(data string, socke
 
 func (srv Server) addDefaultEventListeners() {
 	srv.AddEventListener("join", func(roomName string, socket net.Conn) {
-		srv.rooms[roomName] = append(srv.rooms[roomName], socket)
+		srv.AddToRoom(roomName, socket)
 	})
 }
 
@@ -74,6 +75,10 @@ type EmissionParams struct {
 	Socket net.Conn
 	Event  string
 	Data   string
+}
+
+func (srv Server) AddToRoom(roomName string, socket net.Conn) {
+	srv.rooms[roomName] = append(srv.rooms[roomName], socket)
 }
 
 func (srv Server) Emit(params EmissionParams) {
