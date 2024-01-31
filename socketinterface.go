@@ -68,19 +68,19 @@ func (srv Server) addDefaultEventListeners() {
 }
 
 type EmissionParams struct {
-	room   string
-	socket net.Conn
-	event  string
-	data   string
+	Room   string
+	Socket net.Conn
+	Event  string
+	Data   string
 }
 
 func (srv Server) Emit(params EmissionParams) {
-	if params.room != "" {
-		srv.emitToRoom(params.room, params.event, params.data)
-	} else if params.socket != nil {
-		srv.emitToSocket(params.socket, params.event, params.data)
+	if params.Room != "" {
+		srv.emitToRoom(params.Room, params.Event, params.Data)
+	} else if params.Socket != nil {
+		srv.emitToSocket(params.Socket, params.Event, params.Data)
 	} else {
-		srv.emitToAllSockets(params.event, params.data)
+		srv.emitToAllSockets(params.Event, params.Data)
 	}
 }
 
