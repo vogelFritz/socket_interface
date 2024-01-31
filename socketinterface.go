@@ -16,6 +16,8 @@ type Server struct {
 func (srv *Server) Init(address string) {
 	var err error
 	srv.sockets = []net.Conn{}
+	srv.events = map[string]func(data string, socket net.Conn){}
+	srv.rooms = map[string][]net.Conn{}
 	srv.listener, err = net.Listen("tcp", address)
 	if err != nil {
 		log.Fatal("Couldn't start")
