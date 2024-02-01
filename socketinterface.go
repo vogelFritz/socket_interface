@@ -1,6 +1,7 @@
 package socketinterface
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -18,6 +19,7 @@ func (srv *Server) Init(address string) {
 	srv.sockets = []net.Conn{}
 	srv.events = map[string]func(data string, socket net.Conn){}
 	srv.rooms = map[string][]net.Conn{}
+	fmt.Printf("Server starting at %v\n", address)
 	srv.listener, err = net.Listen("tcp", address)
 	if err != nil {
 		log.Fatal("Couldn't start")
@@ -34,6 +36,7 @@ func (srv *Server) WaitForClients() {
 		if err != nil {
 			log.Fatal("Error accepting client")
 		}
+		log.Println("Client connected")
 		srv.sockets = append(srv.sockets, socket)
 		go srv.handleConnection(socket)
 	}
@@ -82,7 +85,9 @@ func (srv Server) AddToRoom(roomName string, socket net.Conn) {
 }
 
 func (srv Server) Emit(params EmissionParams) {
-	if params.Room != "" {
+	if params.Room != "" && params.Socket != nil {
+		log.Fatal("When using the Emit method, specify either a room or a socket, not both")
+	} else if params.Room != "" {
 		srv.emitToRoom(params.Room, params.Event, params.Data)
 	} else if params.Socket != nil {
 		srv.emitToSocket(params.Socket, params.Event, params.Data)
