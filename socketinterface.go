@@ -7,17 +7,22 @@ import (
 	"strings"
 )
 
+type Socket struct {
+	Conn net.Conn
+	Room string
+}
+
 type Server struct {
 	listener net.Listener
-	sockets  []net.Conn
+	sockets  []Socket
 	rooms    map[string][]net.Conn
-	events   map[string]func(data string, socket net.Conn)
+	events   map[string]func(data string, socket Socket)
 }
 
 func (srv *Server) Init(address string) {
 	var err error
-	srv.sockets = []net.Conn{}
-	srv.events = map[string]func(data string, socket net.Conn){}
+	srv.sockets = []Socket{}
+	srv.events = map[string]func(data string, socket Socket){}
 	srv.rooms = map[string][]net.Conn{}
 	fmt.Printf("Server starting at %v\n", address)
 	srv.listener, err = net.Listen("tcp", address)
@@ -32,20 +37,21 @@ func (srv *Server) WaitForClients() {
 		log.Fatal("Server must be initialized")
 	}
 	for {
-		socket, err := srv.listener.Accept()
+		conn, err := srv.listener.Accept()
 		if err != nil {
 			log.Fatal("Error accepting client")
 		}
 		log.Println("Client connected")
-		srv.sockets = append(srv.sockets, socket)
-		go srv.handleConnection(socket)
+		newSocket := Socket{Conn: conn}
+		srv.sockets = append(srv.sockets, newSocket)
+		go srv.handleConnection(newSocket)
 	}
 }
 
-func (srv Server) handleConnection(socket net.Conn) {
+func (srv Server) handleConnection(socket Socket) {
 	for {
 		buffer := make([]byte, 1000)
-		mLen, err := socket.Read(buffer)
+		mLen, err := socket.Conn.Read(buffer)
 		if err != nil {
 			log.Println("Error reading")
 			break
@@ -54,7 +60,7 @@ func (srv Server) handleConnection(socket net.Conn) {
 	}
 }
 
-func (srv Server) parseMessage(msg []byte, socket net.Conn) {
+func (srv Server) parseMessage(msg []byte, socket Socket) {
 	stringMsg := string(msg)
 	for eventName := range srv.events {
 		if strings.Contains(stringMsg, eventName) {
@@ -63,12 +69,12 @@ func (srv Server) parseMessage(msg []byte, socket net.Conn) {
 	}
 }
 
-func (srv Server) AddEventListener(event string, handler func(data string, socket net.Conn)) {
+func (srv Server) AddEventListener(event string, handler func(data string, socket Socket)) {
 	srv.events[event] = handler
 }
 
 func (srv Server) addDefaultEventListeners() {
-	srv.AddEventListener("join", func(roomName string, socket net.Conn) {
+	srv.AddEventListener("join", func(roomName string, socket Socket) {
 		srv.AddToRoom(roomName, socket)
 	})
 }
@@ -80,8 +86,9 @@ type EmissionParams struct {
 	Data   string
 }
 
-func (srv Server) AddToRoom(roomName string, socket net.Conn) {
-	srv.rooms[roomName] = append(srv.rooms[roomName], socket)
+func (srv Server) AddToRoom(roomName string, socket Socket) {
+	socket.Room = roomName
+	srv.rooms[roomName] = append(srv.rooms[roomName], socket.Conn)
 }
 
 func (srv Server) Emit(params EmissionParams) {
@@ -105,7 +112,7 @@ func (srv Server) emitToRoom(room string, event string, data string) {
 
 func (srv Server) emitToAllSockets(event string, data string) {
 	for i := range srv.sockets {
-		srv.emitToSocket(srv.sockets[i], event, data)
+		srv.emitToSocket(srv.sockets[i].Conn, event, data)
 	}
 }
 
